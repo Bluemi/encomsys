@@ -3,8 +3,7 @@
 
 #include <tuple>
 
-// #include "holey_vec.hpp"
-#include <vector>
+#include "util/index_vector.hpp"
 
 namespace encom {
 	using ID_TYPE = uint64_t;
@@ -14,33 +13,101 @@ namespace encom {
 
 	template<typename T>
 	class ref {
-		private:
+		public:
 			const ID_TYPE _consecutive_index;
 			const ID_TYPE _array_index;
-		public:
-			ref(ID_TYPE consecutive_index, ID_TYPE array_index) : _consecutive_index(consecutive_index), _array_index(array_index) {}
 
-			template<typename... ComponentTypes>
-			const T& get(const encomsys<ComponentTypes...>& encomsys) const;
+			ref(ID_TYPE consecutive_index, ID_TYPE array_index) : _consecutive_index(consecutive_index), _array_index(array_index) {}
 	};
 
 	template<typename... ComponentTypes>
 	class encomsys {
 		private:
-			std::tuple<std::vector<ComponentTypes>...> _components;
+			std::tuple<__encom_internal::index_vector<ComponentTypes>...> _components;
 			ID_TYPE _next_consecutive_id;
 
 		public:
 			explicit encomsys();
 
+			/**
+			 * Adds the given component into this encomsys.
+			 *
+			 * @param component The component to add to this encomsys
+			 * @returns a ref to the added component
+			 */
 			template<typename T>
-			ref<T> add_component(const T& component);
+			ref<T> add(const T& component);
 
+			/**
+			 * @param ref The reference to the requests component
+			 * @returns the component referenced by the given ref
+			 */
+			template<typename T>
+			T& get(const ref<T>&);
+
+			/**
+			 * @param ref The reference to the requests component
+			 * @returns the component referenced by the given ref
+			 */
+			template<typename T>
+			const T& get(const ref<T>&) const;
+
+			/**
+			 * Removes the component given by ref
+			 *
+			 * @param ref The reference pointing to the component, that should be removed
+			 * @returns true, if the remove was successful, false otherwise
+			 */
+			template<typename T>
+			bool remove(const ref<T>&);
+
+			/**
+			 * Executes func for every component of type T.
+			 *
+			 * @param func The function to execute for every component of type T
+			 */
 			template<typename T>
 			void for_each(void (*func)(const T&));
 
+			/**
+			 * Executes func for every component of type T.
+			 *
+			 * @param func The function to execute for every component of type T
+			 */
 			template<typename T>
 			void for_each(void (*func)(T&));
+
+			/**
+			 * Executes func for every component of type T.
+			 *
+			 * @param func The function to execute for every component of type T
+			 */
+			template<typename T>
+			void for_each(void (*func)(T&, encomsys&));
+
+			/**
+			 * Executes func for every component of type T.
+			 *
+			 * @param func The function to execute for every component of type T
+			 */
+			template<typename T>
+			void for_each(void (*func)(T&, const encomsys& encomsys));
+
+			/**
+			 * Executes func for every component of type T.
+			 *
+			 * @param func The function to execute for every component of type T
+			 */
+			template<typename T>
+			void for_each(void (*func)(const T&, encomsys& encomsys));
+
+			/**
+			 * Executes func for every component of type T.
+			 *
+			 * @param func The function to execute for every component of type T
+			 */
+			template<typename T>
+			void for_each(void (*func)(const T&, const encomsys& encomsys)) const;
 	};
 
 	template<typename... ComponentTypes>
@@ -48,34 +115,63 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename T>
-	ref<T> encomsys<ComponentTypes...>::add_component(const T& component) {
-		/*
-		const ID_TYPE array_index = std::get<std::vector<T>>(_components).add(component);
-		*/
-		return ref<T>(_next_consecutive_id, 0);  // TODO
+	ref<T> encomsys<ComponentTypes...>::add(const T& component) {
+		const ID_TYPE array_index = std::get<__encom_internal::index_vector<T>>(_components).add(component);
+		return ref<T>(_next_consecutive_id, array_index);
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
+	T& encomsys<ComponentTypes...>::get(const ref<T>& r) {
+		if (std::get<__encom_internal::index_vector<T>>(_components).has_index(r._array_index)) {
+			return std::get<__encom_internal::index_vector<T>>(_components).get(r._array_index);
+		}
+		throw "Could not find the requested component";
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
+	const T& encomsys<ComponentTypes...>::get(const ref<T>& r) const {
+		if (std::get<__encom_internal::index_vector<T>>(_components).has_index(r._array_index)) {
+			return std::get<__encom_internal::index_vector<T>>(_components).get(r._array_index);
+		}
+		throw "Could not find the requested component";
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
+	bool encomsys<ComponentTypes...>::remove(const ref<T>& r) {
+		return std::get<__encom_internal::index_vector<T>>(_components).remove(r._array_index);
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(const T&)) {
-		/*
-		for (
-			__encom_internal::holey_vec_iterator<T> iter = std::get<__encom_internal::holey_vec<T>>(_components).begin();
-			iter != std::get<__encom_internal::holey_vec<T>>(_components).end();
-			++iter
-		) {
-			func(*iter);
-		}
-		*/
-		for (const T& t : std::get<std::vector<T>>(_components)) {
+		for (const T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
 			func(t);
 		}
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
+	void encomsys<ComponentTypes...>::for_each(void (*func)(T&, const encomsys& encomsys)) {
+		for (const T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
+			func(t, *this);
+		}
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
+	void encomsys<ComponentTypes...>::for_each(void (*func)(T&, encomsys& encomsys)) {
+		for (const T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
+			func(t, *this);
+		}
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(T&)) {
-		for (T& t : std::get<std::vector<T>>(_components)) {
+		for (T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
 			func(t);
 		}
 	}

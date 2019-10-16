@@ -54,4 +54,6 @@ int main() {
 	vec.add(108);
 	std::cout << "added 107 and 108" << std::endl;
 	print_vec(vec);
+
+	std::cout << vec.get(5) << std::endl;
 }

@@ -12,7 +12,7 @@ namespace __encom_internal {
 		private:
 			INDEX_TYPE _index;
 			INDEX_TYPE _end;
-			const std::vector<T>* const _vec;
+			std::vector<T>* const _vec;
 			const std::unordered_set<INDEX_TYPE>* const _holes;
 		public:
 			index_vector_iterator(
