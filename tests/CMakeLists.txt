@@ -1,5 +1,5 @@
 add_executable(MainTest main_test.cpp)
-add_executable(VecTest holey_vec_test.cpp)
+add_executable(VecTest index_vec_test.cpp)
 
 include_directories(ENCOMSYS_SOURCE_DIR)
 

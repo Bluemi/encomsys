@@ -1,8 +1,9 @@
 #include <iostream>
 
-#include <holey_vec.hpp>
+#include <util/index_vector.hpp>
 
-void print_vec(__encom_internal::holey_vec<int>& vec) {
+void print_vec(const __encom_internal::index_vector<int>& vec) {
+	/*
 	for (size_t index = 0; index < vec._instances.size(); ++index) {
 		bool is_hole = vec._holes.find(index) != vec._holes.end();
 		if (is_hole) {
@@ -11,10 +12,21 @@ void print_vec(__encom_internal::holey_vec<int>& vec) {
 			std::cout << index << ": " << vec._instances[index] << std::endl;
 		}
 	}
+	*/
+
+	/*
+	for (auto iter = vec.begin(); iter != vec.end(); ++iter) {
+		std::cout << *iter << std::endl;
+	}
+	*/
+
+	for (int i : vec) {
+		std::cout << i << std::endl;
+	}
 }
 
 int main() {
-	__encom_internal::holey_vec<int> vec;
+	__encom_internal::index_vector<int> vec;
 
 	vec.add(100);
 	vec.add(101);
