@@ -15,18 +15,29 @@ namespace encom {
 	class encomsys;
 
 	template<typename T>
-	class ref {
-		public:
-			const ID_TYPE _consecutive_index;
-			const ID_TYPE _array_index;
+	struct ref {
+		const ID_TYPE consecutive_index;
+		const ID_TYPE array_index;
 
-			ref(ID_TYPE consecutive_index, ID_TYPE array_index) : _consecutive_index(consecutive_index), _array_index(array_index) {}
+		ref(ID_TYPE consecutive_index, ID_TYPE array_index)
+			: consecutive_index(consecutive_index), array_index(array_index)
+		{ }
+	};
+
+	template<typename T>
+	struct component_wrapper {
+		ID_TYPE consecutive_index;
+		T value;
+
+		component_wrapper(ID_TYPE consecutive_index, const T& value)
+			: consecutive_index(consecutive_index), value(value)
+		{ }
 	};
 
 	template<typename... ComponentTypes>
 	class encomsys {
 		private:
-			std::tuple<index_vector<ComponentTypes>...> _components;
+			std::tuple<index_vector<component_wrapper<ComponentTypes>>...> _components;
 			ID_TYPE _next_consecutive_id;
 
 		public:
@@ -57,15 +68,18 @@ namespace encom {
 			template<typename T>
 			const T* const get(const ref<T>&) const;
 
+			/**
+			 * @param ref The reference to check
+			 * @returns whether the given ref is present in this encomsys
+			 */
 			template<typename T>
-			const index_vector<T>& get_components() const {
-				return std::get<__encom_internal::index_vector<T>>(_components);
-			}
+			bool has_element(const ref<T>&) const;
 
 			template<typename T>
-			index_vector<T>& get_components() {
-				return std::get<__encom_internal::index_vector<T>>(_components);
-			}
+			const index_vector<component_wrapper<T>>& get_components() const;
+
+			template<typename T>
+			index_vector<component_wrapper<T>>& get_components();
 
 			/**
 			 * Removes the component given by ref
@@ -131,15 +145,16 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	ref<T> encomsys<ComponentTypes...>::add(const T& component) {
-		const ID_TYPE array_index = get_components<T>().add(component);
-		return ref<T>(_next_consecutive_id, array_index);
+		const component_wrapper<T> w(_next_consecutive_id, component);
+		const ID_TYPE array_index = get_components<T>().add(w);
+		return ref<T>(_next_consecutive_id++, array_index);
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
 	T* const encomsys<ComponentTypes...>::get(const ref<T>& r) {
-		if (get_components<T>().has_index(r._array_index)) {
-			return &get_components<T>().get(r._array_index);
+		if (has_element(r)) {
+			return &get_components<T>().get(r.array_index).value;
 		}
 		return nullptr;
 	}
@@ -147,39 +162,65 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	const T* const encomsys<ComponentTypes...>::get(const ref<T>& r) const {
-		if (get_components<T>().has_index(r._array_index)) {
-			return &get_components<T>().get(r._array_index);
+		if (has_element(r)) {
+			return &get_components<T>().get(r.array_index).value;
 		}
 		return nullptr;
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
+	bool encomsys<ComponentTypes...>::has_element(const ref<T>& r) const {
+		// first check, if the array element is present
+		if (get_components<T>().has_index(r.array_index)) {
+			// second check, if the consecutive indices match
+			return get_components<T>().get(r.array_index).consecutive_index == r.consecutive_index;
+		}
+		return false;
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
+	const index_vector<component_wrapper<T>>& encomsys<ComponentTypes...>::get_components() const {
+		return std::get<index_vector<component_wrapper<T>>>(_components);
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
+	index_vector<component_wrapper<T>>& encomsys<ComponentTypes...>::get_components() {
+		return std::get<index_vector<component_wrapper<T>>>(_components);
+	}
+
+	template<typename... ComponentTypes>
+	template<typename T>
 	bool encomsys<ComponentTypes...>::remove(const ref<T>& r) {
-		return get_components<T>().remove(r._array_index);
+		if (has_element(r)) {
+			return get_components<T>().remove(r.array_index);
+		}
+		return false;
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(const T&)) {
-		for (const T& t : get_components<T>()) {
-			func(t);
+		for (const component_wrapper<T>& t : get_components<T>()) {
+			func(t.value);
 		}
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(T&, const encomsys& encomsys)) {
-		for (const T& t : get_components<T>()) {
-			func(t, *this);
+		for (const component_wrapper<T>& t : get_components<T>()) {
+			func(t.value, *this);
 		}
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(T&, encomsys& encomsys)) {
-		for (const T& t : get_components<T>()) {
-			func(t, *this);
+		for (const component_wrapper<T>& t : get_components<T>()) {
+			func(t.value, *this);
 		}
 	}
 

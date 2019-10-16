@@ -52,6 +52,10 @@ int main() {
 	e.for_each(print_player);
 	std::cout << std::endl;
 
-	print_player(*e.get(bjoern));
-	std::cout << std::endl;
+	const Player* const p = e.get(bjoern);
+	if (p) {
+		print_player(*p);
+	} else {
+		std::cout << "bjoern ist nicht mehr im encosys" << std::endl;
+	}
 }
