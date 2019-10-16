@@ -39,7 +39,7 @@ int main() {
 	std::cout << std::endl;
 
 	std::cout << "removed ";
-	print_player(e.get(bjoern));
+	print_player(*e.get(bjoern));
 	e.remove(bjoern);
 
 	std::cout << "remove success: " << e.remove(bjoern) << std::endl;
@@ -52,6 +52,6 @@ int main() {
 	e.for_each(print_player);
 	std::cout << std::endl;
 
-	print_player(e.get(bjoern));
+	print_player(*e.get(bjoern));
 	std::cout << std::endl;
 }

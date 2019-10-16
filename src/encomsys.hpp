@@ -43,17 +43,19 @@ namespace encom {
 
 			/**
 			 * @param ref The reference to the requests component
-			 * @returns the component referenced by the given ref
+			 * @returns the component referenced by the given ref. If the component could not be found
+			 * 			nullptr is returned.
 			 */
 			template<typename T>
-			T& get(const ref<T>&);
+			T* const get(const ref<T>&);
 
 			/**
 			 * @param ref The reference to the requests component
-			 * @returns the component referenced by the given ref
+			 * @returns the component referenced by the given ref. If the component could not be found
+			 * 			nullptr is returned.
 			 */
 			template<typename T>
-			const T& get(const ref<T>&) const;
+			const T* const get(const ref<T>&) const;
 
 			template<typename T>
 			const index_vector<T>& get_components() const {
@@ -135,20 +137,20 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename T>
-	T& encomsys<ComponentTypes...>::get(const ref<T>& r) {
+	T* const encomsys<ComponentTypes...>::get(const ref<T>& r) {
 		if (get_components<T>().has_index(r._array_index)) {
-			return get_components<T>().get(r._array_index);
+			return &get_components<T>().get(r._array_index);
 		}
-		throw "Could not find the requested component";
+		return nullptr;
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
-	const T& encomsys<ComponentTypes...>::get(const ref<T>& r) const {
+	const T* const encomsys<ComponentTypes...>::get(const ref<T>& r) const {
 		if (get_components<T>().has_index(r._array_index)) {
-			return get_components<T>().get(r._array_index);
+			return &get_components<T>().get(r._array_index);
 		}
-		throw "Could not find the requested component";
+		return nullptr;
 	}
 
 	template<typename... ComponentTypes>
