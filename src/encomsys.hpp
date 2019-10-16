@@ -8,6 +8,9 @@
 namespace encom {
 	using ID_TYPE = uint64_t;
 
+	template<typename T>
+	using index_vector = __encom_internal::index_vector<T>;
+
 	template<typename... ComponentTypes>
 	class encomsys;
 
@@ -23,7 +26,7 @@ namespace encom {
 	template<typename... ComponentTypes>
 	class encomsys {
 		private:
-			std::tuple<__encom_internal::index_vector<ComponentTypes>...> _components;
+			std::tuple<index_vector<ComponentTypes>...> _components;
 			ID_TYPE _next_consecutive_id;
 
 		public:
@@ -51,6 +54,16 @@ namespace encom {
 			 */
 			template<typename T>
 			const T& get(const ref<T>&) const;
+
+			template<typename T>
+			const index_vector<T>& get_components() const {
+				return std::get<__encom_internal::index_vector<T>>(_components);
+			}
+
+			template<typename T>
+			index_vector<T>& get_components() {
+				return std::get<__encom_internal::index_vector<T>>(_components);
+			}
 
 			/**
 			 * Removes the component given by ref
@@ -116,15 +129,15 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	ref<T> encomsys<ComponentTypes...>::add(const T& component) {
-		const ID_TYPE array_index = std::get<__encom_internal::index_vector<T>>(_components).add(component);
+		const ID_TYPE array_index = get_components<T>().add(component);
 		return ref<T>(_next_consecutive_id, array_index);
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
 	T& encomsys<ComponentTypes...>::get(const ref<T>& r) {
-		if (std::get<__encom_internal::index_vector<T>>(_components).has_index(r._array_index)) {
-			return std::get<__encom_internal::index_vector<T>>(_components).get(r._array_index);
+		if (get_components<T>().has_index(r._array_index)) {
+			return get_components<T>().get(r._array_index);
 		}
 		throw "Could not find the requested component";
 	}
@@ -132,8 +145,8 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	const T& encomsys<ComponentTypes...>::get(const ref<T>& r) const {
-		if (std::get<__encom_internal::index_vector<T>>(_components).has_index(r._array_index)) {
-			return std::get<__encom_internal::index_vector<T>>(_components).get(r._array_index);
+		if (get_components<T>().has_index(r._array_index)) {
+			return get_components<T>().get(r._array_index);
 		}
 		throw "Could not find the requested component";
 	}
@@ -141,13 +154,13 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	bool encomsys<ComponentTypes...>::remove(const ref<T>& r) {
-		return std::get<__encom_internal::index_vector<T>>(_components).remove(r._array_index);
+		return get_components<T>().remove(r._array_index);
 	}
 
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(const T&)) {
-		for (const T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
+		for (const T& t : get_components<T>()) {
 			func(t);
 		}
 	}
@@ -155,7 +168,7 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(T&, const encomsys& encomsys)) {
-		for (const T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
+		for (const T& t : get_components<T>()) {
 			func(t, *this);
 		}
 	}
@@ -163,7 +176,7 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(T&, encomsys& encomsys)) {
-		for (const T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
+		for (const T& t : get_components<T>()) {
 			func(t, *this);
 		}
 	}
@@ -171,7 +184,7 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename T>
 	void encomsys<ComponentTypes...>::for_each(void (*func)(T&)) {
-		for (T& t : std::get<__encom_internal::index_vector<T>>(_components)) {
+		for (T& t : get_components<T>()) {
 			func(t);
 		}
 	}
