@@ -43,8 +43,8 @@ int main() {
 	ensys e;
 
 	player_relation bjoern(player_name_t("bjoern"), position_t(1.f, 2.f));
-	encom::ref bjoern_ref = e.add_rel(bjoern);
-	e.add_rel(player_relation("heike", position_t(11.f, 12.f)));
+	encom::ref bjoern_ref = e.add(bjoern);
+	e.add(player_relation("heike", position_t(11.f, 12.f)));
 
 	/*
 	std::cout << "initial players:" << std::endl;

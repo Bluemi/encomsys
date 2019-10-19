@@ -56,7 +56,7 @@ namespace encom {
 			 * @returns a ref to the added component
 			 */
 			template<typename T>
-			ref<T> add(const T& component);
+			std::enable_if_t<!is_relation<T>::value, ref<T>> add(const T& component);
 
 			/**
 			 * Adds the given relation into this encomsys.
@@ -65,7 +65,7 @@ namespace encom {
 			 * @returns a ref to the added relation
 			 */
 			template<typename R>
-			ref<R> add_rel(const R& relation_component);
+			std::enable_if_t<is_relation<R>::value, ref<R>> add(const R& relation_component);
 
 			/**
 			 * @param ref The reference to the requests component
@@ -159,7 +159,7 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename T>
-	ref<T> encomsys<ComponentTypes...>::add(const T& component) {
+	std::enable_if_t<!is_relation<T>::value, ref<T>> encomsys<ComponentTypes...>::add(const T& component) {
 		const component_wrapper<T> w(_next_consecutive_id, component);
 		const ID_TYPE array_index = get_components<T>().add(w);
 		return ref<T>(_next_consecutive_id++, array_index);
@@ -195,8 +195,7 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename RelationType>
-	ref<RelationType> encomsys<ComponentTypes...>::add_rel(const RelationType& relation_component) {
-		// std::cout << "add relation type" << std::endl;
+	std::enable_if_t<is_relation<RelationType>::value, ref<RelationType>> encomsys<ComponentTypes...>::add(const RelationType& relation_component) {
 		typename RelationType::__component_refs references = relation_add_helper(relation_component, this);
 
 		component_wrapper<RelationType> w(_next_consecutive_id, references);
@@ -281,9 +280,9 @@ namespace encom {
 	}
 
 	template<typename... ComponentTypes>
-	template<typename T>
-	void encomsys<ComponentTypes...>::for_each(void (*func)(T&)) {
-		for (T& t : get_components<T>()) {
+	template<typename ComponentType>
+	void encomsys<ComponentTypes...>::for_each(void (*func)(ComponentType&)) {
+		for (ComponentType& t : get_components<ComponentType>()) {
 			func(t);
 		}
 	}
