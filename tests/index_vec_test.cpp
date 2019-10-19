@@ -2,7 +2,7 @@
 
 #include <util/index_vector.hpp>
 
-void print_vec(const __encom_internal::index_vector<int>& vec) {
+void print_vec(const encom::index_vector<int>& vec) {
 	/*
 	for (size_t index = 0; index < vec._instances.size(); ++index) {
 		bool is_hole = vec._holes.find(index) != vec._holes.end();
@@ -26,7 +26,7 @@ void print_vec(const __encom_internal::index_vector<int>& vec) {
 }
 
 int main() {
-	__encom_internal::index_vector<int> vec;
+	encom::index_vector<int> vec;
 
 	vec.add(100);
 	vec.add(101);

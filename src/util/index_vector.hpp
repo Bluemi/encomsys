@@ -3,23 +3,22 @@
 
 #include <vector>
 #include <unordered_set>
+#include "types.hpp"
 
-namespace __encom_internal {
-	using INDEX_TYPE = uint64_t;
-
+namespace encom {
 	template<typename T>
 	class index_vector_iterator {
 		private:
-			INDEX_TYPE _index;
-			INDEX_TYPE _end;
+			encom::ID_TYPE _index;
+			encom::ID_TYPE _end;
 			std::vector<T>* const _vec;
-			const std::unordered_set<INDEX_TYPE>* const _holes;
+			const std::unordered_set<encom::ID_TYPE>* const _holes;
 		public:
 			index_vector_iterator(
-					INDEX_TYPE index,
-					INDEX_TYPE end,
+					encom::ID_TYPE index,
+					encom::ID_TYPE end,
 					std::vector<T>* vec,
-					const std::unordered_set<INDEX_TYPE>* const holes
+					const std::unordered_set<encom::ID_TYPE>* const holes
 			)
 				: _index(index), _vec(vec), _end(end), _holes(holes)
 			{
@@ -67,17 +66,17 @@ namespace __encom_internal {
 	template<typename T>
 	class const_index_vector_iterator {
 		private:
-			INDEX_TYPE _index;
-			INDEX_TYPE _end;
+			encom::ID_TYPE _index;
+			encom::ID_TYPE _end;
 			const std::vector<T>* const _vec;
-			const std::unordered_set<INDEX_TYPE>* const _holes;
+			const std::unordered_set<encom::ID_TYPE>* const _holes;
 
 		public:
 			const_index_vector_iterator(
-					INDEX_TYPE index,
-					INDEX_TYPE end,
+					encom::ID_TYPE index,
+					encom::ID_TYPE end,
 					const std::vector<T>* const vec,
-					const std::unordered_set<INDEX_TYPE>* const holes
+					const std::unordered_set<encom::ID_TYPE>* const holes
 			)
 				: _index(index), _vec(vec), _end(end), _holes(holes)
 			{
@@ -136,7 +135,7 @@ namespace __encom_internal {
 		private:
 			size_t _size;
 			std::vector<T> _instances;
-			std::unordered_set<INDEX_TYPE> _holes;
+			std::unordered_set<encom::ID_TYPE> _holes;
 		public:
 			using iterator = index_vector_iterator<T>;
 			using const_iterator = const_index_vector_iterator<T>;
@@ -153,13 +152,13 @@ namespace __encom_internal {
 			 * @param t The instance to add to this vector
 			 * @returns The index where the given instance is added
 			 */
-			INDEX_TYPE add(const T& t) {
-				INDEX_TYPE newpos = 0;
+			encom::ID_TYPE add(const T& t) {
+				encom::ID_TYPE newpos = 0;
 				if (_holes.empty()) {
 					_instances.push_back(t);
 					newpos = _instances.size() - 1;
 				} else {
-					const std::unordered_set<INDEX_TYPE>::const_iterator b = _holes.begin();
+					const std::unordered_set<encom::ID_TYPE>::const_iterator b = _holes.begin();
 					newpos = *b;
 					_instances[newpos] = t;
 					_holes.erase(b);
@@ -173,7 +172,7 @@ namespace __encom_internal {
 			 * @param index The index to check
 			 * @returns true, if there is an element at the specified index, otherwise false
 			 */
-			bool has_index(const INDEX_TYPE index) const {
+			bool has_index(const encom::ID_TYPE index) const {
 				return (index < _instances.size()) && (_holes.find(index) == _holes.end());
 			}
 
@@ -185,7 +184,7 @@ namespace __encom_internal {
 			 * @param index The index where to remove the element
 			 * @returns true, if there was an element at the specified index, otherwise false
 			 */
-			bool remove(INDEX_TYPE index) {
+			bool remove(encom::ID_TYPE index) {
 				if (index < _instances.size()) {
 					// if index is not in holes
 					if (_holes.find(index) == _holes.end()) {
@@ -204,7 +203,7 @@ namespace __encom_internal {
 			 * @param index The index specifying the element to get
 			 * @returns The element at the given index
 			 */
-			const T& get(const INDEX_TYPE index) const {
+			const T& get(const encom::ID_TYPE index) const {
 				if (has_index(index)) {
 					return _instances[index];
 				} else {
@@ -219,7 +218,7 @@ namespace __encom_internal {
 			 * @param index The index specifying the element to get
 			 * @returns The element at the given index
 			 */
-			T& get(const INDEX_TYPE index) {
+			T& get(const encom::ID_TYPE index) {
 				if (has_index(index)) {
 					return _instances[index];
 				} else {

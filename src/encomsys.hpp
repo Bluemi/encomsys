@@ -4,34 +4,40 @@
 #include <tuple>
 
 #include "util/index_vector.hpp"
+#include "util/types.hpp"
+#include "ref.hpp"
+#include "relation.hpp"
 
 namespace encom {
-	using ID_TYPE = uint64_t;
-
-	template<typename T>
-	using index_vector = __encom_internal::index_vector<T>;
-
-	template<typename... ComponentTypes>
+	template<typename ...ComponentTypes>
 	class encomsys;
 
-	template<typename T>
-	struct ref {
-		const ID_TYPE consecutive_index;
-		const ID_TYPE array_index;
+	template<typename ComponentType, typename __Specialization=void>
+	struct component_wrapper {
+		ID_TYPE consecutive_index;
+		ComponentType value;
 
-		ref(ID_TYPE consecutive_index, ID_TYPE array_index)
-			: consecutive_index(consecutive_index), array_index(array_index)
+		component_wrapper(ID_TYPE consecutive_index, const ComponentType& value)
+			: consecutive_index(consecutive_index), value(value)
 		{ }
 	};
 
-	template<typename T>
-	struct component_wrapper {
+	/**
+	 * This specialization contains the relations sub type __component_refs, to point to
+	 * the components locations.
+	 */
+	template<typename RelationType>
+	struct component_wrapper<RelationType, std::enable_if_t<is_relation<RelationType>::value>> {
 		ID_TYPE consecutive_index;
-		T value;
+		typename RelationType::__component_refs _refs;
 
-		component_wrapper(ID_TYPE consecutive_index, const T& value)
-			: consecutive_index(consecutive_index), value(value)
-		{ }
+		component_wrapper(ID_TYPE consecutive_index, const typename RelationType::__component_refs& refs) : consecutive_index(consecutive_index), _refs(refs) {}
+
+		/* TODO
+		template<typename ...ComponentTypes>
+		RelationType get_value(const encomsys<ComponentTypes...>*) {
+		}
+		*/
 	};
 
 	template<typename... ComponentTypes>
@@ -51,6 +57,15 @@ namespace encom {
 			 */
 			template<typename T>
 			ref<T> add(const T& component);
+
+			/**
+			 * Adds the given relation into this encomsys.
+			 *
+			 * @param relation_component The relation component to add to this encomsys
+			 * @returns a ref to the added relation
+			 */
+			template<typename R>
+			ref<R> add_rel(const R& relation_component);
 
 			/**
 			 * @param ref The reference to the requests component
@@ -148,6 +163,47 @@ namespace encom {
 		const component_wrapper<T> w(_next_consecutive_id, component);
 		const ID_TYPE array_index = get_components<T>().add(w);
 		return ref<T>(_next_consecutive_id++, array_index);
+	}
+
+	template<std::size_t I = 0, typename ...RelationComponentTypes, typename ...ComponentTypes>
+	std::enable_if_t<I == sizeof...(RelationComponentTypes)>
+	add_relation_components(
+		const std::tuple<RelationComponentTypes...>&,
+		std::tuple<ref<RelationComponentTypes>...>*,
+		encomsys<ComponentTypes...>*
+	) {}
+
+	template<std::size_t I = 0, typename ...RelationComponentTypes, typename ...ComponentTypes>
+	std::enable_if_t<I < sizeof...(RelationComponentTypes)>
+	add_relation_components(
+		const std::tuple<RelationComponentTypes...>& relation_components,
+		std::tuple<ref<RelationComponentTypes>...>* references,
+		encomsys<ComponentTypes...>* encomsys
+	) {
+		using component_type = typename std::tuple_element<I, std::tuple<RelationComponentTypes...>>::type;
+		ref<component_type> component_ref = encomsys->add(std::get<I>(relation_components));
+		add_relation_components<I+1>(relation_components, references, encomsys);
+		std::get<ref<component_type>>(*references) = component_ref;
+	}
+
+	template<typename ...RelationComponentTypes, typename ...ComponentTypes>
+	std::tuple<ref<RelationComponentTypes>...> relation_add_helper(const std::tuple<RelationComponentTypes...>& relation_components, encomsys<ComponentTypes...>* encomsys) {
+		std::tuple<ref<RelationComponentTypes>...> references;
+		add_relation_components(relation_components, &references, encomsys);
+		return references;
+	}
+
+	template<typename... ComponentTypes>
+	template<typename RelationType>
+	ref<RelationType> encomsys<ComponentTypes...>::add_rel(const RelationType& relation_component) {
+		// std::cout << "add relation type" << std::endl;
+		typename RelationType::__component_refs references = relation_add_helper(relation_component, this);
+
+		component_wrapper<RelationType> w(_next_consecutive_id, references);
+
+		ID_TYPE array_index = get_components<RelationType>().add(w);
+
+		return ref<RelationType>(_next_consecutive_id++, array_index);
 	}
 
 	template<typename... ComponentTypes>
