@@ -42,7 +42,7 @@ void do_physics(player_relation::as_ref& player) {
 int main() {
 	ensys e;
 
-	player_relation bjoern(player_name_t("bjoern"), position_t(1.f, 2.f));
+	player_relation bjoern("bjoern", position_t(1.f, 2.f));
 	encom::ref bjoern_ref = e.add(bjoern);
 	e.add(player_relation("heike", position_t(11.f, 12.f)));
 
