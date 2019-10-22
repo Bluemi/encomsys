@@ -1,5 +1,7 @@
 #!/bin/bash
 
+tput reset
+
 # create include directory in ./build/
 function mk_includes() {
 	include_dir="./build/include/"
