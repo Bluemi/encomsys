@@ -28,12 +28,45 @@ namespace encom {
 		using type = typename T::as_ref;
 	};
 
+	template<size_t I = 0, typename ...Ts>
+	struct __from_last {
+		using type = typename std::tuple_element<sizeof...(Ts)-I-1, std::tuple<Ts...>>::type;
+	};
+
 	template<typename ...ComponentTypes>
 	struct relation : public std::tuple<ComponentTypes...>, __relation_tag {
 		using std::tuple<ComponentTypes...>::tuple; // use tuple constructors
 
 		using __component_handles = std::tuple<handle<ComponentTypes>...>;
 		using as_ref = std::tuple<__relation_ref_expander<ComponentTypes>&...>;
+
+		template<size_t I = 0, typename ...Ts>
+		typename std::enable_if_t<
+			I == sizeof...(Ts) - 1,
+			const typename __from_last<0, Ts...>::type
+		>& get_helper(const typename __from_last<0, Ts...>::type& element) const {
+			return element;
+		}
+
+		template<size_t I = 0, typename ...Ts>
+		typename std::enable_if_t<
+			I < sizeof...(Ts) - 1,
+			const typename __from_last<0, Ts...>::type
+		>& get_helper(const typename std::tuple_element<I, std::tuple<Ts...>>::type& element) const {
+			using current_component_type = typename std::tuple_element<I+1, std::tuple<Ts...>>::type;
+			return get_helper<I+1, Ts...>(std::get<current_component_type>(element));
+		}
+
+		template<typename ...Ts>
+		typename __from_last<0, Ts...>::type& get() {
+			return const_cast<const relation<ComponentTypes...>&>(*this).get<Ts...>();
+		}
+
+		template<typename ...Ts>
+		const typename __from_last<0, Ts...>::type& get() const {
+			using current_component_type = typename std::tuple_element<0, std::tuple<Ts...>>::type;
+			return get_helper<0, Ts...>(std::get<current_component_type>(*this));
+		}
 	};
 
 	template<typename ...ComponentTypes>

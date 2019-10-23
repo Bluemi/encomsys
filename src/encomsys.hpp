@@ -1,8 +1,12 @@
 #ifndef __ENCOMSYS_CLASS__
 #define __ENCOMSYS_CLASS__
 
+// #define LOG_PRINTS
+
 #include <tuple>
+#ifdef LOG_PRINTS
 #include <iostream>
+#endif
 
 #include "util/index_vector.hpp"
 #include "util/types.hpp"
@@ -28,7 +32,9 @@ namespace encom {
 			}
 
 			const ComponentType& get_value() const {
+				#ifdef LOG_PRINTS
 				std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_value()" << std::endl;
+				#endif
 				return value;
 			}
 	};
@@ -56,7 +62,9 @@ namespace encom {
 			std::tuple<RelationComponentTypes...>* relation,
 			const encomsys<ComponentTypes...>* const encomsys
 		) const {
+			#ifdef LOG_PRINTS
 			std::cout << "relation_get_helper<I=" << I << ", sizeof...(RelationComponentTypes)=" << sizeof...(RelationComponentTypes) << ">()" << std::endl;
+			#endif
 			using current_relation_component_type = typename std::tuple_element<I, std::tuple<RelationComponentTypes...>>::type;
 			std::get<I>(*relation) = *encomsys->get(std::get<I>(_handles));
 			relation_get_helper<I+1>(relation, encomsys);
@@ -67,7 +75,9 @@ namespace encom {
 		 */
 		template<typename ...ComponentTypes>
 		RelationType get_value(const encomsys<ComponentTypes...>* const encomsys) const {
+			#ifdef LOG_PRINTS
 			std::cout << "component_wrapper<" << typeid(RelationType).name() << ">::get_value()" << std::endl;
+			#endif
 			RelationType relation;
 			relation_get_helper(&relation, encomsys);
 			return relation;
@@ -213,28 +223,28 @@ namespace encom {
 	std::enable_if_t<I < sizeof...(RelationComponentTypes)>
 	add_relation_components(
 		const std::tuple<RelationComponentTypes...>& relation_components,
-		std::tuple<handle<RelationComponentTypes>...>* references,
+		std::tuple<handle<RelationComponentTypes>...>* handles,
 		encomsys<ComponentTypes...>* encomsys
 	) {
 		using component_type = typename std::tuple_element<I, std::tuple<RelationComponentTypes...>>::type;
 		handle<component_type> component_ref = encomsys->add(std::get<I>(relation_components));
-		add_relation_components<I+1>(relation_components, references, encomsys);
-		std::get<handle<component_type>>(*references) = component_ref;
+		add_relation_components<I+1>(relation_components, handles, encomsys);
+		std::get<handle<component_type>>(*handles) = component_ref;
 	}
 
 	template<typename ...RelationComponentTypes, typename ...ComponentTypes>
 	std::tuple<handle<RelationComponentTypes>...> relation_add_helper(const std::tuple<RelationComponentTypes...>& relation_components, encomsys<ComponentTypes...>* encomsys) {
-		std::tuple<handle<RelationComponentTypes>...> references;
-		add_relation_components(relation_components, &references, encomsys);
-		return references;
+		std::tuple<handle<RelationComponentTypes>...> handles;
+		add_relation_components(relation_components, &handles, encomsys);
+		return handles;
 	}
 
 	template<typename... ComponentTypes>
 	template<typename RelationType>
 	std::enable_if_t<is_relation<RelationType>::value, handle<RelationType>> encomsys<ComponentTypes...>::add(const RelationType& relation_component) {
-		typename RelationType::__component_handles references = relation_add_helper(relation_component, this);
+		typename RelationType::__component_handles handles = relation_add_helper(relation_component, this);
 
-		component_wrapper<RelationType> w(_next_consecutive_id, references);
+		component_wrapper<RelationType> w(_next_consecutive_id, handles);
 
 		ID_TYPE array_index = get_components<RelationType>().add(w);
 
