@@ -64,8 +64,8 @@ namespace encom {
 
 		template<typename ...Ts>
 		const typename __from_last<0, Ts...>::type& get() const {
-			using current_component_type = typename std::tuple_element<0, std::tuple<Ts...>>::type;
-			return get_helper<0, Ts...>(std::get<current_component_type>(*this));
+			using CurrentComponentType = typename std::tuple_element<0, std::tuple<Ts...>>::type;
+			return get_helper<0, Ts...>(std::get<CurrentComponentType>(*this));
 		}
 	};
 
