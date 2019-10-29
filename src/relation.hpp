@@ -16,15 +16,15 @@ namespace encom {
 	using is_relation_v = typename is_relation<T>::value;
 
 	/**
-	 * __relation_ref_expander transforms every relation R to R::as_ref and any other type T to T
+	 * relation_ref_expander transforms every relation R to R::as_ref and any other type T to T
 	 */
 	template<typename T, typename S=void>
-	struct __relation_ref_expander {
-		using type = T;
+	struct relation_ref_expander {
+		using type = T&;
 	};
 
 	template<typename T>
-	struct __relation_ref_expander<T, std::enable_if_t<is_relation<T>::value>> {
+	struct relation_ref_expander<T, std::enable_if_t<is_relation<T>::value>> {
 		using type = typename T::as_ref;
 	};
 
@@ -38,7 +38,7 @@ namespace encom {
 		using std::tuple<ComponentTypes...>::tuple; // use tuple constructors
 
 		using __component_handles = std::tuple<handle<ComponentTypes>...>;
-		using as_ref = std::tuple<__relation_ref_expander<ComponentTypes>&...>;
+		using as_ref = std::tuple<typename relation_ref_expander<ComponentTypes>::type...>;
 
 		template<size_t I = 0, typename ...Ts>
 		typename std::enable_if_t<
