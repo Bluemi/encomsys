@@ -41,7 +41,7 @@ void test_as_ref_get_rec() {
 	A::as_ref a_ref = std::make_tuple(std::ref(c1), std::ref(c2));
 	B::as_ref b_ref = std::make_tuple(std::ref(i), std::ref(f));
 	Relation::as_ref r_ref = std::make_tuple(a_ref, b_ref);
-	std::cout << r_ref.get<A, C1>().i << std::endl;
+	std::cout << r_ref.get<A, C2>().i << std::endl;
 }
 
 int main() {

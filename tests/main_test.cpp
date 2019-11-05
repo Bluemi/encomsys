@@ -59,8 +59,8 @@ void change_password(admin_player_relation::as_ref admin) {
 	admin.get<password_component>().passwd = "new password";
 }
 
-void change_admin_position(admin_player_relation::as_ref admin) {
-	admin.get<player_relation, position_t>().x += 1;
+void change_admin_position(const admin_player_relation::as_ref& admin) {
+	admin.get<player_relation, position_t>().x = 100;
 }
 
 int main() {
@@ -98,6 +98,7 @@ int main() {
 	print_player(*ensys.get(player_handle));
 
 	change_password(*ensys.get_ref(admin_handle));
+	change_admin_position(*ensys.get_ref(admin_handle));
 
 	print_admin(*ensys.get(admin_handle));
 
