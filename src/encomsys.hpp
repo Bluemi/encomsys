@@ -62,7 +62,7 @@ namespace encom {
 	 * the components locations.
 	 */
 	template<typename RelationType>
-	struct component_wrapper<RelationType, std::enable_if_t<is_relation<RelationType>::value>> {
+	struct component_wrapper<RelationType, std::enable_if_t<is_relation_v<RelationType>>> {
 		ID_TYPE consecutive_index;
 		typename RelationType::__component_handles _handles;
 
@@ -112,7 +112,7 @@ namespace encom {
 		// handle_to_ref for relations
 		template<typename RelationComponentType, typename ...EncomComponentTypes>
 		std::enable_if_t<
-			is_relation<RelationComponentType>::value,
+			is_relation_v<RelationComponentType>,
 			typename RelationComponentType::as_ref
 		> handle_to_ref(
 			const handle<RelationComponentType>& handle,
@@ -124,7 +124,7 @@ namespace encom {
 		// handle_to_ref for components
 		template<typename RelationComponentType, typename ...EncomComponentTypes>
 		std::enable_if_t<
-			!is_relation<RelationComponentType>::value,
+			!is_relation_v<RelationComponentType>,
 			typename std::reference_wrapper<RelationComponentType>
 		> handle_to_ref(
 			const handle<RelationComponentType>& handle,
@@ -139,7 +139,7 @@ namespace encom {
 			const std::tuple<handle<RelationComponentTypes>...>& handles,
 			encomsys<EncomComponentTypes...>* const encomsys
 		) const {
-			return std::make_tuple(handle_to_ref(std::get<I>(handles), encomsys) ...);
+			return typename RelationType::as_ref(std::make_tuple(handle_to_ref(std::get<I>(handles), encomsys) ...));
 		}
 
 		template<typename ...RelationComponentTypes, typename ...EncomComponentTypes>
@@ -177,7 +177,7 @@ namespace encom {
 			 * @returns a handle to the added component
 			 */
 			template<typename ComponentType>
-			std::enable_if_t<!is_relation<ComponentType>::value, handle<ComponentType>> add(const ComponentType& component);
+			std::enable_if_t<!is_relation_v<ComponentType>, handle<ComponentType>> add(const ComponentType& component);
 
 			/**
 			 * Adds the given relation into this encomsys.
@@ -186,7 +186,7 @@ namespace encom {
 			 * @returns a handle to the added relation
 			 */
 			template<typename RelationType>
-			std::enable_if_t<is_relation<RelationType>::value, handle<RelationType>> add(const RelationType& relation_component);
+			std::enable_if_t<is_relation_v<RelationType>, handle<RelationType>> add(const RelationType& relation_component);
 
 			/**
 			 * @param handle The handle to the requested component
@@ -194,7 +194,7 @@ namespace encom {
 			 * 			nullptr is returned.
 			 */
 			template<typename ComponentType>
-			std::enable_if_t<!is_relation<ComponentType>::value, std::optional<ComponentType>>
+			std::enable_if_t<!is_relation_v<ComponentType>, std::optional<ComponentType>>
 			get(const handle<ComponentType>&) const;
 
 			/**
@@ -203,21 +203,21 @@ namespace encom {
 			 * 			nullptr is returned.
 			 */
 			template<typename RelationType>
-			std::enable_if_t<is_relation<RelationType>::value, std::optional<RelationType>>
+			std::enable_if_t<is_relation_v<RelationType>, std::optional<RelationType>>
 			get(const handle<RelationType>&) const;
 
 			/**
 			 * @param handle The handle to the requested component
 			 */
 			template<typename ComponentType>
-			std::enable_if_t<!is_relation<ComponentType>::value, ComponentType* const>
+			std::enable_if_t<!is_relation_v<ComponentType>, ComponentType* const>
 			get_ref(const handle<ComponentType>& handle);
 
 			/**
 			 * @param handle The handle to the requested component
 			 */
 			template<typename RelationType>
-			std::enable_if_t<is_relation<RelationType>::value, std::optional<typename RelationType::as_ref>>
+			std::enable_if_t<is_relation_v<RelationType>, std::optional<typename RelationType::as_ref>>
 			get_ref(const handle<RelationType>& handle);
 
 			/**
@@ -296,7 +296,7 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename ComponentType>
-	std::enable_if_t<!is_relation<ComponentType>::value, handle<ComponentType>> encomsys<ComponentTypes...>::add(const ComponentType& component) {
+	std::enable_if_t<!is_relation_v<ComponentType>, handle<ComponentType>> encomsys<ComponentTypes...>::add(const ComponentType& component) {
 		const component_wrapper<ComponentType> w(_next_consecutive_id, component);
 		const ID_TYPE array_index = get_components<ComponentType>().add(w);
 		return handle<ComponentType>(_next_consecutive_id++, array_index);
@@ -332,7 +332,7 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename RelationType>
-	std::enable_if_t<is_relation<RelationType>::value, handle<RelationType>> encomsys<ComponentTypes...>::add(const RelationType& relation_component) {
+	std::enable_if_t<is_relation_v<RelationType>, handle<RelationType>> encomsys<ComponentTypes...>::add(const RelationType& relation_component) {
 		typename RelationType::__component_handles handles = relation_add_helper(relation_component, this);
 
 		component_wrapper<RelationType> w(_next_consecutive_id, handles);
@@ -344,7 +344,7 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename ComponentType>
-	std::enable_if_t<!is_relation<ComponentType>::value, std::optional<ComponentType>>
+	std::enable_if_t<!is_relation_v<ComponentType>, std::optional<ComponentType>>
 	encomsys<ComponentTypes...>::get(const handle<ComponentType>& component_handle) const {
 		if (has_element(component_handle)) {
 			return get_components<ComponentType>().get(component_handle.array_index).get_value();
@@ -355,7 +355,7 @@ namespace encom {
 	template<typename... ComponentTypes>
 	template<typename RelationType>
 	std::enable_if_t<
-		is_relation<RelationType>::value,
+		is_relation_v<RelationType>,
 		std::optional<RelationType>
 	>
 	encomsys<ComponentTypes...>::get(const handle<RelationType>& relation_handle) const {
@@ -367,7 +367,7 @@ namespace encom {
 
 	template<typename ...ComponentTypes>
 	template<typename ComponentType>
-	std::enable_if_t<!is_relation<ComponentType>::value, ComponentType* const>
+	std::enable_if_t<!is_relation_v<ComponentType>, ComponentType* const>
 	encomsys<ComponentTypes...>::get_ref(const handle<ComponentType>& component_handle) {
 		if (has_element(component_handle)) {
 			return &get_components<ComponentType>().get(component_handle.array_index).get_ref();
@@ -377,7 +377,7 @@ namespace encom {
 
 	template<typename ...ComponentTypes>
 	template<typename RelationType>
-	std::enable_if_t<is_relation<RelationType>::value, std::optional<typename RelationType::as_ref>>
+	std::enable_if_t<is_relation_v<RelationType>, std::optional<typename RelationType::as_ref>>
 	encomsys<ComponentTypes...>::get_ref(const handle<RelationType>& component_handle) {
 		if (has_element(component_handle)) {
 			return std::optional(get_components<RelationType>().get(component_handle.array_index).get_ref(this));

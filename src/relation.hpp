@@ -13,10 +13,10 @@ namespace encom {
 	};
 
 	template<typename T>
-	using is_relation_v = typename is_relation<T>::value;
+	inline constexpr bool is_relation_v = is_relation<T>::value;
 
 	/**
-	 * relation_ref_expander transforms every relation R to R::as_ref and any other type T to T
+	 * relation_ref_expander transforms every relation R to R::as_ref and any other type T to T&
 	 */
 	template<typename T, typename S=void>
 	struct relation_ref_expander {
@@ -24,54 +24,88 @@ namespace encom {
 	};
 
 	template<typename T>
-	struct relation_ref_expander<T, std::enable_if_t<is_relation<T>::value>> {
+	struct relation_ref_expander<T, std::enable_if_t<is_relation_v<T>>> {
 		using type = typename T::as_ref;
 	};
 
-	template<size_t I = 0, typename ...Ts>
-	struct __from_last {
-		using type = typename std::tuple_element<sizeof...(Ts)-I-1, std::tuple<Ts...>>::type;
-	};
+	template<typename T>
+	using relation_ref_expander_t = typename relation_ref_expander<T>::type;
+
+	template<typename ...Ts>
+	using __last = std::tuple_element_t<sizeof...(Ts)-1, std::tuple<Ts...>>;
+
+	template<typename ...Ts>
+	using __first = std::tuple_element_t<0, std::tuple<Ts...>>;
 
 	template<typename ...ComponentTypes>
 	struct relation : public std::tuple<ComponentTypes...>, __relation_tag {
-		using std::tuple<ComponentTypes...>::tuple; // use tuple constructors
+		// use tuple constructors
+		using std::tuple<ComponentTypes...>::tuple;
 
+		// type definitions
 		using __component_handles = std::tuple<handle<ComponentTypes>...>;
-		using as_ref = std::tuple<typename relation_ref_expander<ComponentTypes>::type...>;
 
+		struct as_ref : public std::tuple<relation_ref_expander_t<ComponentTypes>...> {
+			as_ref(const std::tuple<relation_ref_expander_t<ComponentTypes>...>& t) : std::tuple<relation_ref_expander_t<ComponentTypes>...>(t) {}
+
+			// as_ref get function
+			template<size_t I = 0, typename ...Ts>
+			typename std::enable_if_t<
+				I == sizeof...(Ts) - 1,
+				const relation_ref_expander_t<__last<Ts...>>
+			> get_helper(const relation_ref_expander_t<__last<Ts...>> element) const {
+				return element;
+			}
+
+			template<size_t I = 0, typename ...Ts>
+			typename std::enable_if_t<
+				I < sizeof...(Ts) - 1,
+				const relation_ref_expander_t<__last<Ts...>>
+			> get_helper(const relation_ref_expander_t<std::tuple_element_t<I, std::tuple<Ts...>>>& element) const {
+				using CurrentComponentType = relation_ref_expander_t<std::tuple_element_t<I+1, std::tuple<Ts...>>>;
+				return get_helper<I+1, Ts...>(std::get<CurrentComponentType>(element));
+			}
+
+			template<typename ...Ts>
+			relation_ref_expander_t<__last<Ts...>> get() {
+				return const_cast<relation_ref_expander_t<__last<Ts...>>>(const_cast<const relation<ComponentTypes...>::as_ref&>(*this).get<Ts...>());
+			}
+
+			template<typename ...Ts>
+			const relation_ref_expander_t<__last<Ts...>> get() const {
+				using CurrentComponentType = relation_ref_expander_t<__first<Ts...>>;
+				return get_helper<0, Ts...>(std::get<CurrentComponentType>(*this));
+			}
+		};
+
+		// get function
 		template<size_t I = 0, typename ...Ts>
 		typename std::enable_if_t<
 			I == sizeof...(Ts) - 1,
-			const typename __from_last<0, Ts...>::type
-		>& get_helper(const typename __from_last<0, Ts...>::type& element) const {
+			const __last<Ts...>
+		>& get_helper(const __last<Ts...>& element) const {
 			return element;
 		}
 
 		template<size_t I = 0, typename ...Ts>
 		typename std::enable_if_t<
 			I < sizeof...(Ts) - 1,
-			const typename __from_last<0, Ts...>::type
-		>& get_helper(const typename std::tuple_element<I, std::tuple<Ts...>>::type& element) const {
-			using current_component_type = typename std::tuple_element<I+1, std::tuple<Ts...>>::type;
+			const __last<Ts...>
+		>& get_helper(const std::tuple_element_t<I, std::tuple<Ts...>>& element) const {
+			using current_component_type = std::tuple_element_t<I+1, std::tuple<Ts...>>;
 			return get_helper<I+1, Ts...>(std::get<current_component_type>(element));
 		}
 
 		template<typename ...Ts>
-		typename __from_last<0, Ts...>::type& get() {
+		__last<Ts...>& get() {
 			return const_cast<const relation<ComponentTypes...>&>(*this).get<Ts...>();
 		}
 
 		template<typename ...Ts>
-		const typename __from_last<0, Ts...>::type& get() const {
-			using CurrentComponentType = typename std::tuple_element<0, std::tuple<Ts...>>::type;
+		const __last<Ts...>& get() const {
+			using CurrentComponentType = std::tuple_element_t<0, std::tuple<Ts...>>;
 			return get_helper<0, Ts...>(std::get<CurrentComponentType>(*this));
 		}
-	};
-
-	template<typename ...ComponentTypes>
-	struct ref_relation : public std::tuple<handle<ComponentTypes>...> {
-		using relation_type = relation<ComponentTypes...>;
 	};
 }
 

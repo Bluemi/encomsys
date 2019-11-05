@@ -13,10 +13,9 @@ struct player_name_t {
 
 struct position_t {
 	position_t() = default;
-	position_t(const float x, const float y) : x(x), y(y) {}
+	position_t(const float x) : x(x) {}
 
 	float x;
-	float y;
 };
 
 struct password_component {
@@ -39,23 +38,29 @@ struct admin_player_relation : encom::relation<player_relation, password_compone
 using ensys = encom::encomsys<admin_player_relation, player_relation, player_name_t, position_t, password_component>;
 
 void print_position(const position_t& pos) {
-	std::cout << "Position (x=" << pos.x << ", y=" << pos.y << ")" << std::endl;
+	std::cout << "Position (x=" << pos.x << ")" << std::endl;
 }
 
 void print_player(const player_relation& player) {
-	std::cout << "Player (name=" << player.get<player_name_t>().name << ", x=" << player.get<position_t>().x << ", y=" << player.get<position_t>().y << ")" << std::endl;
+	std::cout << "Player (name=" << player.get<player_name_t>().name << ", x=" << player.get<position_t>().x << ")" << std::endl;
 }
 
 void print_admin(const admin_player_relation& admin) {
 	std::cout << "Admin (name=" << admin.get<player_relation, player_name_t>().name <<
 				 ", x=" << admin.get<player_relation, position_t>().x <<
-				 ", y=" << admin.get<player_relation, position_t>().y <<
 				 ", pw=" << admin.get<password_component>().passwd << ")" << std::endl;
 }
 
 void do_physics(const player_relation::as_ref& player) {
 	std::get<position_t&>(player).x += 1.f;
-	std::get<position_t&>(player).y += 1.f;
+}
+
+void change_password(admin_player_relation::as_ref admin) {
+	admin.get<password_component>().passwd = "new password";
+}
+
+void change_admin_position(admin_player_relation::as_ref admin) {
+	admin.get<player_relation, position_t>().x += 1;
 }
 
 int main() {
@@ -63,13 +68,13 @@ int main() {
 
 	// TEST add ------------------------------------------------------
 	// add position
-	encom::handle pos_handle = ensys.add(position_t(42.f, 43.f));
+	encom::handle pos_handle = ensys.add(position_t(0.f));
 
 	// add player
-	encom::handle player_handle = ensys.add(player_relation("player", position_t(1.f, 2.f)));
+	encom::handle player_handle = ensys.add(player_relation("player", position_t(0.f)));
 
 	// add admin
-	encom::handle admin_handle = ensys.add(admin_player_relation(player_relation("admin", position_t(-1.f, -1.f)), password_component("pw")));
+	encom::handle admin_handle = ensys.add(admin_player_relation(player_relation("admin", position_t(0.f)), password_component("pw")));
 
 
 	// TEST get ------------------------------------------------------
@@ -83,6 +88,7 @@ int main() {
 	print_admin(*ensys.get(admin_handle));
 
 	// TEST get_ref ------------------------------------------------------
+	std::cout << std::endl << "Changing player and admin" << std::endl;
 	// get position
 	print_position(*ensys.get_ref(pos_handle));
 
@@ -90,6 +96,10 @@ int main() {
 	do_physics(*ensys.get_ref(player_handle));
 
 	print_player(*ensys.get(player_handle));
+
+	change_password(*ensys.get_ref(admin_handle));
+
+	print_admin(*ensys.get(admin_handle));
 
 	/*
 	std::cout << "initial players:" << std::endl;
