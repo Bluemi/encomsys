@@ -103,10 +103,16 @@ int main() {
 	print_admin(*ensys.get(admin_handle));
 
 	// TEST remove ------------------------------------------------------
-	std::cout << std::endl << "Testing remove" << std::endl;
+	std::cout << std::endl << "Testing remove:" << std::endl;
 	std::cout << "number of positions: " << ensys.get_components<position_t>().size() << std::endl;
+	std::cout << "number of players:   " << ensys.get_components<player_relation>().size() << std::endl;
 
 	ensys.remove(player_handle);
+	std::cout << "player got removed" << std::endl;
 
-	std::cout << "number of positions after player got removed: " << ensys.get_components<position_t>().size() << std::endl;
+	std::cout << "number of positions: " << ensys.get_components<position_t>().size() << std::endl;
+	std::cout << "number of players:   " << ensys.get_components<player_relation>().size() << std::endl;
+
+	std::cout << "check if player is present: " << bool(ensys.get(player_handle)) << std::endl;
+	std::cout << "check if admin is present:  " << bool(ensys.get(admin_handle)) << std::endl;
 }
