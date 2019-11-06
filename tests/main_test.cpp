@@ -102,34 +102,11 @@ int main() {
 
 	print_admin(*ensys.get(admin_handle));
 
-	/*
-	std::cout << "initial players:" << std::endl;
-	ensys.for_each(print_player);
-	std::cout << std::endl;
-	*/
+	// TEST remove ------------------------------------------------------
+	std::cout << std::endl << "Testing remove" << std::endl;
+	std::cout << "number of positions: " << ensys.get_components<position_t>().size() << std::endl;
 
-	/*
-	std::cout << "removed ";
-	// print_player(*ensys.get(player_ref));
-	ensys.remove(player_ref);
+	ensys.remove(player_handle);
 
-	std::cout << "remove success: " << ensys.remove(player_ref) << std::endl;
-
-	std::cout << "after remove" << std::endl;
-	ensys.for_each(print_player);
-	std::cout << std::endl;
-
-	ensys.add(player_relation("daniel", position_t(3.4f, 123.f)));
-	ensys.for_each(print_player);
-	std::cout << std::endl;
-	*/
-
-	/*
-	const player_relation* const p = ensys.get(player_ref);
-	if (p) {
-		print_player(*p);
-	} else {
-		std::cout << "player ist nicht mehr im encosys" << std::endl;
-	}
-	*/
+	std::cout << "number of positions after player got removed: " << ensys.get_components<position_t>().size() << std::endl;
 }

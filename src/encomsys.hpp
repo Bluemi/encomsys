@@ -19,42 +19,45 @@ namespace encom {
 	class encomsys;
 
 	template<typename ComponentType, typename __Specialization=void>
-	class component_wrapper {
-		public:
-			ID_TYPE consecutive_index;
-			ComponentType value;
+	struct component_wrapper {
+		ID_TYPE consecutive_index;
+		std::uint32_t number_of_references;
+		ComponentType value;
 
-			component_wrapper(ID_TYPE consecutive_index, const ComponentType& value)
-				: consecutive_index(consecutive_index), value(value)
-			{ }
+		component_wrapper(ID_TYPE consecutive_index, std::uint32_t number_of_references, const ComponentType& value)
+			: consecutive_index(consecutive_index), number_of_references(number_of_references), value(value)
+		{ }
 
-			ComponentType& get_value() {
-				#ifdef LOG_PRINTS
-				std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_value()" << std::endl;
-				#endif
-				return value;
-			}
+		ComponentType& get_value() {
+			#ifdef LOG_PRINTS
+			std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_value()" << std::endl;
+			#endif
+			return value;
+		}
 
-			const ComponentType& get_value() const {
-				#ifdef LOG_PRINTS
-				std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_value() const" << std::endl;
-				#endif
-				return value;
-			}
+		const ComponentType& get_value() const {
+			#ifdef LOG_PRINTS
+			std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_value() const" << std::endl;
+			#endif
+			return value;
+		}
 
-			ComponentType& get_ref() {
-				#ifdef LOG_PRINTS
-				std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_ref()" << std::endl;
-				#endif
-				return value;
-			}
+		ComponentType& get_ref() {
+			#ifdef LOG_PRINTS
+			std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_ref()" << std::endl;
+			#endif
+			return value;
+		}
 
-			const ComponentType& get_ref() const {
-				#ifdef LOG_PRINTS
-				std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_ref() const" << std::endl;
-				#endif
-				return value;
-			}
+		const ComponentType& get_ref() const {
+			#ifdef LOG_PRINTS
+			std::cout << "component_wrapper<" << typeid(ComponentType).name() << ">::get_ref() const" << std::endl;
+			#endif
+			return value;
+		}
+
+		template<typename ...ComponentTypes>
+		inline void remove_childs(encomsys<ComponentTypes...>*) {}
 	};
 
 	/**
@@ -64,9 +67,12 @@ namespace encom {
 	template<typename RelationType>
 	struct component_wrapper<RelationType, std::enable_if_t<is_relation_v<RelationType>>> {
 		ID_TYPE consecutive_index;
+		std::uint32_t number_of_references;
 		typename RelationType::__component_handles _handles;
 
-		component_wrapper(ID_TYPE consecutive_index, const typename RelationType::__component_handles& handles) : consecutive_index(consecutive_index), _handles(handles) {}
+		component_wrapper(ID_TYPE consecutive_index, std::uint32_t number_of_references, const typename RelationType::__component_handles& handles)
+			: consecutive_index(consecutive_index), number_of_references(number_of_references), _handles(handles)
+		{}
 
 		/**
 		 * Helper function for get_value()
@@ -90,7 +96,7 @@ namespace encom {
 			#ifdef LOG_PRINTS
 			std::cout << "relation_get_helper<I=" << I << ", sizeof...(RelationComponentTypes)=" << sizeof...(RelationComponentTypes) << ">()" << std::endl;
 			#endif
-			using current_relation_component_type = typename std::tuple_element<I, std::tuple<RelationComponentTypes...>>::type;
+			using current_relation_component_type = std::tuple_element_t<I, std::tuple<RelationComponentTypes...>>;
 			std::get<I>(*relation) = *encomsys->get(std::get<I>(_handles));
 			relation_get_helper<I+1>(relation, encomsys);
 		}
@@ -159,6 +165,34 @@ namespace encom {
 		typename RelationType::as_ref get_ref(encomsys<ComponentTypes...>* const encomsys) const {
 			return get_ref_helper_expand_relation(_handles, encomsys);
 		}
+
+		template<size_t I = 0, typename ...RelationComponentTypes, typename ...ComponentTypes>
+		std::enable_if_t<I == sizeof...(RelationComponentTypes)>
+		remove_childs_impl(
+			const std::tuple<handle<RelationComponentTypes>...>&,
+			encomsys<ComponentTypes...>* const
+		) {}
+
+		template<size_t I = 0, typename ...RelationComponentTypes, typename ...ComponentTypes>
+		std::enable_if_t<I < sizeof...(RelationComponentTypes)>
+		remove_childs_impl(
+			const std::tuple<handle<RelationComponentTypes>...>& relation_handles,
+			encomsys<ComponentTypes...>* const encomsys
+		) {
+			encomsys->__decrease_number_of_references(std::get<I>(relation_handles));
+			encomsys->remove(std::get<I>(relation_handles));
+			remove_childs_impl<I+1>(relation_handles, encomsys);
+		}
+
+		/**
+		 * Recursively removes child components of the wrapped relation instance
+		 *
+		 * @param encomsys The entity component system from which to remove the childs
+		 */
+		template<typename ...ComponentTypes>
+		void remove_childs(encomsys<ComponentTypes...>* encomsys) {
+			remove_childs_impl(_handles, encomsys);
+		}
 	};
 
 	template<typename... ComponentTypes>
@@ -170,23 +204,38 @@ namespace encom {
 		public:
 			explicit encomsys();
 
+			template<typename ComponentType>
+			void __decrease_number_of_references(const handle<ComponentType>& handle);
+
 			/**
-			 * Adds the given component into this encomsys.
+			 * Adds the given component or relation into this encomsys.
+			 * It is assumed that the given component or relation is not references by other relations.
 			 *
 			 * @param component The component to add to this encomsys
 			 * @returns a handle to the added component
 			 */
 			template<typename ComponentType>
-			std::enable_if_t<!is_relation_v<ComponentType>, handle<ComponentType>> add(const ComponentType& component);
+			handle<ComponentType> add(const ComponentType& component);
+
+			/**
+			 * Adds the given component into this encomsys.
+			 *
+			 * @param component The component to add to this encomsys
+			 * @param number_of_references The number of relations referencing this component
+			 * @returns a handle to the added component
+			 */
+			template<typename ComponentType>
+			std::enable_if_t<!is_relation_v<ComponentType>, handle<ComponentType>> add(const ComponentType& component, std::uint32_t number_of_references);
 
 			/**
 			 * Adds the given relation into this encomsys.
 			 *
 			 * @param relation_component The relation component to add to this encomsys
+			 * @param number_of_references The number of relations referencing this relation
 			 * @returns a handle to the added relation
 			 */
 			template<typename RelationType>
-			std::enable_if_t<is_relation_v<RelationType>, handle<RelationType>> add(const RelationType& relation_component);
+			std::enable_if_t<is_relation_v<RelationType>, handle<RelationType>> add(const RelationType& relation_component, std::uint32_t number_of_references);
 
 			/**
 			 * @param handle The handle to the requested component
@@ -296,8 +345,16 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename ComponentType>
-	std::enable_if_t<!is_relation_v<ComponentType>, handle<ComponentType>> encomsys<ComponentTypes...>::add(const ComponentType& component) {
-		const component_wrapper<ComponentType> w(_next_consecutive_id, component);
+	void encomsys<ComponentTypes...>::__decrease_number_of_references(const handle<ComponentType>& handle) {
+		if (has_element(handle)) {
+			get_components<ComponentType>().get(handle.array_index).number_of_references--;
+		}
+	}
+
+	template<typename... ComponentTypes>
+	template<typename ComponentType>
+	std::enable_if_t<!is_relation_v<ComponentType>, handle<ComponentType>> encomsys<ComponentTypes...>::add(const ComponentType& component, std::uint32_t number_of_references) {
+		const component_wrapper<ComponentType> w(_next_consecutive_id, number_of_references, component);
 		const ID_TYPE array_index = get_components<ComponentType>().add(w);
 		return handle<ComponentType>(_next_consecutive_id++, array_index);
 	}
@@ -317,10 +374,10 @@ namespace encom {
 		std::tuple<handle<RelationComponentTypes>...>* handles,
 		encomsys<ComponentTypes...>* encomsys
 	) {
-		using component_type = typename std::tuple_element<I, std::tuple<RelationComponentTypes...>>::type;
-		handle<component_type> component_ref = encomsys->add(std::get<I>(relation_components));
+		using component_type = std::tuple_element_t<I, std::tuple<RelationComponentTypes...>>;
+		handle<component_type> component_handle = encomsys->add(std::get<I>(relation_components), 1);
 		add_relation_components<I+1>(relation_components, handles, encomsys);
-		std::get<handle<component_type>>(*handles) = component_ref;
+		std::get<handle<component_type>>(*handles) = component_handle;
 	}
 
 	template<typename ...RelationComponentTypes, typename ...ComponentTypes>
@@ -331,11 +388,17 @@ namespace encom {
 	}
 
 	template<typename... ComponentTypes>
+	template<typename ComponentType>
+	handle<ComponentType> encomsys<ComponentTypes...>::add(const ComponentType& component) {
+		return add(component, 0);
+	}
+
+	template<typename... ComponentTypes>
 	template<typename RelationType>
-	std::enable_if_t<is_relation_v<RelationType>, handle<RelationType>> encomsys<ComponentTypes...>::add(const RelationType& relation_component) {
+	std::enable_if_t<is_relation_v<RelationType>, handle<RelationType>> encomsys<ComponentTypes...>::add(const RelationType& relation_component, std::uint32_t number_of_references) {
 		typename RelationType::__component_handles handles = relation_add_helper(relation_component, this);
 
-		component_wrapper<RelationType> w(_next_consecutive_id, handles);
+		component_wrapper<RelationType> w(_next_consecutive_id, number_of_references, handles);
 
 		ID_TYPE array_index = get_components<RelationType>().add(w);
 
@@ -410,9 +473,14 @@ namespace encom {
 
 	template<typename... ComponentTypes>
 	template<typename ComponentType>
-	bool encomsys<ComponentTypes...>::remove(const handle<ComponentType>& r) {
-		if (has_element(r)) {
-			return get_components<ComponentType>().remove(r.array_index);
+	bool encomsys<ComponentTypes...>::remove(const handle<ComponentType>& h) {
+		if (has_element(h)) {
+			component_wrapper<ComponentType> w = get_components<ComponentType>().get(h.array_index);
+
+			if (w.number_of_references == 0) {
+				w.remove_childs(this);
+				return get_components<ComponentType>().remove(h.array_index);
+			}
 		}
 		return false;
 	}
